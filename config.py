@@ -1,7 +1,7 @@
 import os
 
 # Abdul Rafay & Ali - 2026-04-24
-
+# Configuration settings for database connection and health monitoring
 class Config:
     MYSQL_HOST = os.environ.get('MYSQL_HOST', 'sakila-db-server')
     MYSQL_USER = os.environ.get('MYSQL_USER', 'root')
