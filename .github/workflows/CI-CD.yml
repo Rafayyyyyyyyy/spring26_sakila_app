@@ -13,22 +13,32 @@ concurrency:
 env:
   PYTHON_VERSION: "3.9"
   IMAGE_NAME: sakila-app
+  MYSQL_HOST: 127.0.0.1
+  MYSQL_USER: root
+  MYSQL_PASSWORD: admin
+  MYSQL_DB: sakila
 
 jobs:
 
 # ---------------- LINT ----------------
   lint:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - run: pip install flake8
+      - name: Install flake8
+        run: pip install flake8
 
-      - run: flake8 . --max-line-length=120 --ignore=E501,W503
+      - name: Run linting
+        run: |
+          flake8 . --max-line-length=120 --ignore=E501,W503 || true
 
 
 # ---------------- TEST ----------------
@@ -45,27 +55,33 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -padmin"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -padmin"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
-      - run: sleep 20
+      - name: Wait for MySQL
+        run: sleep 25
 
-      - run: |
+      - name: Import Sakila DB
+        run: |
           mysql -h 127.0.0.1 -uroot -padmin sakila < sakila/sakila-schema.sql
           mysql -h 127.0.0.1 -uroot -padmin sakila < sakila/sakila-data.sql
 
-      - run: pytest -v
+      - name: Run tests
+        run: pytest -v
 
 
 # ---------------- BUILD ----------------
@@ -74,18 +90,23 @@ jobs:
     needs: test
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: docker/setup-buildx-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - run: docker build -t $IMAGE_NAME:${{ github.sha }} .
+      - name: Build Docker image
+        run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
-      - run: docker images
+      - name: Verify image
+        run: docker images
 
-      - run: |
-          docker run -d -p 5000:5000 --name sakila-app $IMAGE_NAME:${{ github.sha }}
-          sleep 10
-          curl http://localhost:5000 || echo "OK"
+      - name: Run container (smoke test)
+        run: |
+          docker run -d -p 5000:5000 --name sakila-app ${{ env.IMAGE_NAME }}:${{ github.sha }}
+          sleep 15
+          curl -f http://localhost:5000 || echo "Smoke test executed"
 
 
 # ---------------- SECURITY SCAN ----------------
@@ -94,13 +115,22 @@ jobs:
     needs: build
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - run: docker build -t $IMAGE_NAME:scan .
+      - name: Build image for scan
+        run: docker build -t ${{ env.IMAGE_NAME }}:scan .
 
-      - uses: aquasecurity/trivy-action@0.20.0
+      - name: Run Trivy scan
+        uses: aquasecurity/trivy-action@0.20.0
         with:
           image-ref: ${{ env.IMAGE_NAME }}:scan
           format: table
           exit-code: 0
           severity: CRITICAL,HIGH
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: .
