@@ -19,25 +19,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Simulate staging build
+      - name: Simulate staging deployment
         run: |
-          echo "Deploying to STAGING environment"
+          echo "Deploying to STAGING"
           echo "Image: sakila-app:staging"
 
-      - name: Simulated Docker build
-        run: |
-          echo "docker build -t sakila-app:staging ."
-          echo "docker run sakila-app:staging"
-
-      - name: Job Summary (STAGING)
+      - name: Job Summary
         run: |
           echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
-          echo "- Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
           echo "- Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify staging
-        run: echo "Slack notification: staging deployment successful"
+        run: echo "Slack: staging deployment successful"
 
 
   deploy-production:
@@ -45,19 +39,22 @@ jobs:
     needs: deploy-staging
     environment: production
 
+    permissions:
+      contents: write   # REQUIRED for release
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Generate version tag
+      - name: Generate tag
         run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
 
-      - name: Production deployment
+      - name: Production deploy
         run: |
           echo "Deploying to PRODUCTION"
           echo "Version: $TAG"
 
-      - name: Create GitHub Release
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
@@ -66,4 +63,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify production
-        run: echo "Slack notification: production deployment successful"
+        run: echo "Slack: production deployment successful"
