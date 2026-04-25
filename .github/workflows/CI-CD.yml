@@ -61,4 +61,4 @@ jobs:
         with:
           context: .
           push: true
-          tags: malijutt/sakilaappspring:latest
+          tags: abdulrafayasad/sakilaappspring:latest
