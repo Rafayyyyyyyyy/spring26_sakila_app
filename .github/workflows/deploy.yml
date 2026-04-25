@@ -11,7 +11,6 @@ on:
 
 jobs:
 
-  # ---------------- STAGING ----------------
   deploy-staging:
     runs-on: ubuntu-latest
     environment: staging
@@ -20,29 +19,23 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Simulate staging deployment
-        run: |
-          echo "Deploying to STAGING environment"
-          echo "Image: sakila-app:staging"
+      - name: Build Docker image (staging)
+        run: docker build -t sakila-app:staging .
 
       - name: Run staging container
         run: |
-          docker build -t sakila-app:staging .
-          docker run -d -p 5001:5000 sakila-app:staging || true
+          docker run -d -p 5001:5000 --name sakila-staging sakila-app:staging || true
           echo "Staging container started"
 
-      - name: Job Summary (Staging)
+      - name: Staging Summary
         run: |
-          echo "### 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "### Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
           echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
-          echo "- Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
           echo "- Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
 
       - name: Notify staging
-        run: echo "Slack notification: Deployment to staging successful"
+        run: echo "Staging deployment successful"
 
-
-  # ---------------- PRODUCTION ----------------
   deploy-production:
     runs-on: ubuntu-latest
     needs: deploy-staging
@@ -58,9 +51,9 @@ jobs:
       - name: Generate version tag
         run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
 
-      - name: Simulate production deployment
+      - name: Production deploy
         run: |
-          echo "Deploying to PRODUCTION environment"
+          echo "Deploying to PRODUCTION"
           echo "Version: $TAG"
 
       - name: Create GitHub Release
@@ -72,4 +65,4 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Notify production
-        run: echo "Slack notification: Deployment to production successful"
+        run: echo "Production deployment successful"
