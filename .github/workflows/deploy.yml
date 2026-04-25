@@ -1,76 +1,81 @@
 name: Deployment Pipeline
 
 on:
-  push:
-    branches: [ main ]
-    paths:
-      - 'app.py'
-      - 'config.py'
-      - 'templates/**'
-      - 'static/**'
-      - 'Dockerfile'
-      - 'requirements.txt'
-      - 'docker-compose.yml'
+push:
+branches:
+- main
+paths-ignore:
+- README.md
+- docs/**
+- "*.md"
+- .gitignore
 
 jobs:
 
 # ---------------- STAGING ----------------
-  deploy-staging:
-    runs-on: ubuntu-latest
-    environment: staging
 
-    steps:
-      - uses: actions/checkout@v4
+deploy-staging:
+runs-on: ubuntu-latest
+environment: staging
 
-      - name: Simulate staging deployment
-        run: |
-          echo "Deploying to STAGING environment"
-          echo "Image: sakila-app:staging"
+```
+steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
 
-      - name: Run container (staging)
-        run: |
-          docker build -t sakila-app:staging .
-          docker run -d -p 5001:5000 sakila-app:staging
-          sleep 5
-          curl -f http://localhost:5001 || echo "Staging running"
+  - name: Build Docker image (staging)
+    run: docker build -t sakila-app:staging .
 
-      - name: Job Summary
-        run: |
-          echo "### 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
-          echo "- Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
-          echo "- Status: Success" >> $GITHUB_STEP_SUMMARY
+  - name: Run staging container
+    run: |
+      docker run -d -p 5001:5000 --name sakila-staging sakila-app:staging
+      sleep 5
+      docker ps
 
-      - name: Notify
-        run: echo "Slack notification: Deployment to staging successful"
+  - name: Simulate staging deployment
+    run: |
+      echo "Deploying to STAGING environment"
+      echo "Image: sakila-app:staging"
 
+  - name: Job Summary (STAGING)
+    run: |
+      echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+      echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
+      echo "- Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
+      echo "- Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
+
+  - name: Notify staging
+    run: echo "Slack notification: Deployment to staging successful"
+```
 
 # ---------------- PRODUCTION ----------------
-  deploy-production:
-    runs-on: ubuntu-latest
-    needs: deploy-staging
-    environment: production
 
-    steps:
-      - uses: actions/checkout@v4
+deploy-production:
+runs-on: ubuntu-latest
+needs: deploy-staging
+environment: production   # 🔴 THIS triggers manual approval in GitHub settings
 
-      - name: Simulate production deployment
-        run: |
-          echo "Deploying to PRODUCTION environment"
+```
+steps:
+  - name: Checkout code
+    uses: actions/checkout@v4
 
-      - name: Create Release Tag
-        id: date
-        run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+  - name: Set version tag
+    run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
 
-      - name: Create GitHub Release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ env.TAG }}
-          release_name: Release ${{ env.TAG }}
-          draft: false
-          prerelease: false
+  - name: Simulate production deployment
+    run: |
+      echo "Deploying to PRODUCTION environment"
+      echo "Using tag: $TAG"
 
-      - name: Notify
-        run: echo "Slack notification: Deployment to production successful"
+  - name: Create GitHub Release
+    uses: softprops/action-gh-release@v2
+    with:
+      tag_name: ${{ env.TAG }}
+      name: Release ${{ env.TAG }}
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  - name: Notify production
+    run: echo "Slack notification: Deployment to production successful"
+```
