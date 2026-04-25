@@ -16,25 +16,22 @@ jobs:
     environment: staging
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Build Docker image (staging)
-        run: docker build -t sakila-app:staging .
+      - run: docker build -t sakila-app:staging .
 
-      - name: Run staging container
-        run: |
+      - run: |
           docker run -d -p 5001:5000 --name sakila-staging sakila-app:staging || true
           echo "Staging container started"
 
-      - name: Staging Summary
-        run: |
-          echo "### Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
-          echo "- Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
+      - run: |
+          echo "## STAGING DEPLOYMENT SUMMARY" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Environment: staging" >> $GITHUB_STEP_SUMMARY
+          echo "Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
+          echo "Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
 
-      - name: Notify staging
-        run: echo "Staging deployment successful"
+      - run: echo "Staging deployment successful"
 
   deploy-production:
     runs-on: ubuntu-latest
@@ -45,24 +42,19 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Generate version tag
-        run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+      - run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
 
-      - name: Production deploy
-        run: |
+      - run: |
           echo "Deploying to PRODUCTION"
           echo "Version: $TAG"
 
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ env.TAG }}
           name: Release ${{ env.TAG }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Notify production
-        run: echo "Production deployment successful"
+      - run: echo "Production deployment successful"
