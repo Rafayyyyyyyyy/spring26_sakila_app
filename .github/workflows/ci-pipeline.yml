@@ -27,7 +27,8 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - run: pip install flake8
+      - name: Install flake8
+        run: pip install flake8
 
       - name: Run flake8 (non-blocking)
         run: flake8 . --max-line-length=120 --ignore=E501,W503 || true
@@ -59,12 +60,12 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - run: pip install -r requirements.txt
+      - name: Install dependencies
+        run: pip install -r requirements.txt
 
       - name: Wait for MySQL
         run: sleep 25
 
-      # FIXED PATH (important)
       - name: Import Sakila DB
         run: |
           mysql -h 127.0.0.1 -uroot -padmin sakila < sakila-db/sakila-schema.sql
@@ -87,10 +88,10 @@ jobs:
       - name: Build Docker image
         run: docker build -t $IMAGE_NAME:${{ github.sha }} .
 
-      - name: Show images
+      - name: Show Docker images
         run: docker images
 
-      - name: Run container
+      - name: Run container (smoke test)
         run: |
           docker run -d -p 5000:5000 --name sakila-app $IMAGE_NAME:${{ github.sha }}
           sleep 10
@@ -105,19 +106,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build image
-        run: docker build -t $IMAGE_NAME:scan .  
+      - name: Build image for scan
+        run: docker build -t $IMAGE_NAME:scan .
 
-      # FIXED TRIVY VERSION (IMPORTANT)
+      # ✅ FIXED TRIVY (WORKING VERSION)
       - name: Trivy scan
-        uses: aquasecurity/trivy-action@0.20.0
+        uses: aquasecurity/trivy-action@master
         with:
           image-ref: ${{ env.IMAGE_NAME }}:scan
           format: table
           exit-code: 0
           severity: CRITICAL,HIGH
 
-      - name: Upload report
+      - name: Upload Trivy report
         uses: actions/upload-artifact@v4
         with:
           name: trivy-report
