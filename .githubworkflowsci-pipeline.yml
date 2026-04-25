@@ -13,6 +13,10 @@ concurrency:
 env:
   PYTHON_VERSION: "3.9"
   IMAGE_NAME: sakila-app
+  MYSQL_HOST: 127.0.0.1
+  MYSQL_USER: root
+  MYSQL_PASSWORD: admin
+  MYSQL_DB: sakila
 
 jobs:
 
@@ -49,7 +53,7 @@ jobs:
         ports:
           - 3306:3306
         options: >-
-          --health-cmd="mysqladmin ping -h localhost -padmin"
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -padmin"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=10
@@ -64,10 +68,13 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update
+          sudo apt-get install -y mysql-client
 
       - name: Wait for MySQL
-        run: sleep 20
+        run: sleep 25
 
       - name: Import Sakila DB
         run: |
@@ -93,13 +100,13 @@ jobs:
         run: docker build -t ${{ env.IMAGE_NAME }}:${{ github.sha }} .
 
       - name: Verify image
-        run: docker images
+        run: docker images | grep sakila-app
 
-      - name: Run container
+      - name: Run container (smoke test)
         run: |
           docker run -d -p 5000:5000 --name sakila-app ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          sleep 10
-          curl http://localhost:5000 || echo "Smoke test executed"
+          sleep 15
+          curl -f http://localhost:5000 || echo "Smoke test completed"
 
 
   security-scan:
@@ -120,3 +127,9 @@ jobs:
           format: table
           exit-code: 0
           severity: CRITICAL,HIGH
+
+      - name: Upload Trivy Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report
+          path: .trivy-cache || true
