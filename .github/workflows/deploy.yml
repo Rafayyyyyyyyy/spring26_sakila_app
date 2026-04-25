@@ -22,14 +22,12 @@ jobs:
 
       - run: |
           docker run -d -p 5001:5000 --name sakila-staging sakila-app:staging || true
-          echo "Staging container started"
 
       - run: |
-          echo "## STAGING DEPLOYMENT SUMMARY" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Environment: staging" >> $GITHUB_STEP_SUMMARY
-          echo "Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
-          echo "Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
+          echo "### STAGING DEPLOYMENT SUMMARY" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
 
       - run: echo "Staging deployment successful"
 
