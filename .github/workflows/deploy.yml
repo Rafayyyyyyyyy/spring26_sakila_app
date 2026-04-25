@@ -53,7 +53,7 @@ steps:
 deploy-production:
 runs-on: ubuntu-latest
 needs: deploy-staging
-environment: production   # 🔴 THIS triggers manual approval in GitHub settings
+environment: production
 
 ```
 steps:
