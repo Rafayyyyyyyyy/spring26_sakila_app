@@ -1,81 +1,69 @@
 name: Deployment Pipeline
 
 on:
-push:
-branches:
-- main
-paths-ignore:
-- README.md
-- docs/**
-- "*.md"
-- .gitignore
+  push:
+    branches: [ main ]
+    paths-ignore:
+      - README.md
+      - docs/**
+      - "*.md"
+      - .gitignore
 
 jobs:
 
-# ---------------- STAGING ----------------
+  deploy-staging:
+    runs-on: ubuntu-latest
+    environment: staging
 
-deploy-staging:
-runs-on: ubuntu-latest
-environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-```
-steps:
-  - name: Checkout code
-    uses: actions/checkout@v4
+      - name: Simulate staging build
+        run: |
+          echo "Deploying to STAGING environment"
+          echo "Image: sakila-app:staging"
 
-  - name: Build Docker image (staging)
-    run: docker build -t sakila-app:staging .
+      - name: Simulated Docker build
+        run: |
+          echo "docker build -t sakila-app:staging ."
+          echo "docker run sakila-app:staging"
 
-  - name: Run staging container
-    run: |
-      docker run -d -p 5001:5000 --name sakila-staging sakila-app:staging
-      sleep 5
-      docker ps
+      - name: Job Summary (STAGING)
+        run: |
+          echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
+          echo "- Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
 
-  - name: Simulate staging deployment
-    run: |
-      echo "Deploying to STAGING environment"
-      echo "Image: sakila-app:staging"
+      - name: Notify staging
+        run: echo "Slack notification: staging deployment successful"
 
-  - name: Job Summary (STAGING)
-    run: |
-      echo "## 🚀 Staging Deployment Summary" >> $GITHUB_STEP_SUMMARY
-      echo "- Environment: staging" >> $GITHUB_STEP_SUMMARY
-      echo "- Image: sakila-app:staging" >> $GITHUB_STEP_SUMMARY
-      echo "- Status: SUCCESS" >> $GITHUB_STEP_SUMMARY
 
-  - name: Notify staging
-    run: echo "Slack notification: Deployment to staging successful"
-```
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    environment: production
 
-# ---------------- PRODUCTION ----------------
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-deploy-production:
-runs-on: ubuntu-latest
-needs: deploy-staging
-environment: production
+      - name: Generate version tag
+        run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
 
-```
-steps:
-  - name: Checkout code
-    uses: actions/checkout@v4
+      - name: Production deployment
+        run: |
+          echo "Deploying to PRODUCTION"
+          echo "Version: $TAG"
 
-  - name: Set version tag
-    run: echo "TAG=v$(date +'%Y.%m.%d')" >> $GITHUB_ENV
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.TAG }}
+          name: Release ${{ env.TAG }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  - name: Simulate production deployment
-    run: |
-      echo "Deploying to PRODUCTION environment"
-      echo "Using tag: $TAG"
-
-  - name: Create GitHub Release
-    uses: softprops/action-gh-release@v2
-    with:
-      tag_name: ${{ env.TAG }}
-      name: Release ${{ env.TAG }}
-    env:
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  - name: Notify production
-    run: echo "Slack notification: Deployment to production successful"
-```
+      - name: Notify production
+        run: echo "Slack notification: production deployment successful"
