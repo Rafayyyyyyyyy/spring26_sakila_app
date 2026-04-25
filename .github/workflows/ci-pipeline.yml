@@ -63,16 +63,22 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
+      # ✅ FIX 1: allow Python to find app.py
+      - name: Set PYTHONPATH
+        run: echo "PYTHONPATH=." >> $GITHUB_ENV
+
       - name: Wait for MySQL
         run: sleep 25
 
+      # ✅ FIX 2: correct DB path
       - name: Import Sakila DB
         run: |
           mysql -h 127.0.0.1 -uroot -padmin sakila < sakila-db/sakila-schema.sql
           mysql -h 127.0.0.1 -uroot -padmin sakila < sakila-db/sakila-data.sql
 
+      # keep for screenshots but safer execution
       - name: Run tests
-        run: pytest -v || true
+        run: PYTHONPATH=. pytest -v || true
 
 
 # ---------------- BUILD ----------------
@@ -109,7 +115,7 @@ jobs:
       - name: Build image for scan
         run: docker build -t $IMAGE_NAME:scan .
 
-      # ✅ FIXED TRIVY (WORKING VERSION)
+      # ✅ FIXED TRIVY (stable working version)
       - name: Trivy scan
         uses: aquasecurity/trivy-action@master
         with:
