@@ -1,0 +1,27 @@
+FROM python:3.9-slim
+
+LABEL maintainer="yourname"
+LABEL version="1.0"
+LABEL description="Optimized Sakila Flask App"
+
+WORKDIR /app
+
+# copy dependencies first (better caching)
+COPY requirements-fixed.txt .
+
+RUN apt-get update && apt-get install -y curl && \
+    pip install --no-cache-dir -r requirements-fixed.txt && \
+    apt-get clean
+
+# copy project
+COPY . .
+
+# create non-root user
+RUN useradd -m appuser
+USER appuser
+
+EXPOSE 5000
+
+HEALTHCHECK CMD curl --fail http://localhost:5000 || exit 1
+
+CMD ["python", "app.py"]
